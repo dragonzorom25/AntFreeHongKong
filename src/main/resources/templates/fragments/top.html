@@ -1,0 +1,296 @@
+<div th:fragment="topFragment">
+  <header class="top-bar">
+    <div class="left-section">
+      <button id="menuToggle" title="메뉴 열기/닫기">
+        <i class="fas fa-bars"></i>
+      </button>
+      <h1 class="site-title">MyBaseLink</h1>
+    </div>
+
+    <div class="right-section">
+      <div id="profileBtn" class="unified-btn" title="프로필">
+        <i class="fas fa-user-circle"></i>
+      </div>
+
+      <div id="sessionRefreshContainer" class="unified-btn session-refresh-btn" title="Remaining time">
+        <i class="fas fa-clock" id="timerIcon"></i>
+        <span id="sessionTimer">--:--</span>
+        <i id="refreshSessionBtn" class="fas fa-rotate-right" title="Refresh"></i>
+      </div>
+
+      <button id="logoutBtn" class="unified-btn" title="로그아웃">
+        <i class="fas fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </header>
+
+  <div id="profileLayer" class="profile-layer">
+    <h3>내 프로필</h3>
+    <label>이름:<input type="text" id="profileName" readonly></label>
+    <label>이메일:<input type="email" id="profileEmail" placeholder="you@example.com" readonly></label>
+
+    <!-- 다크 모드 토글 -->
+    <div class="darkmode-toggle">
+      <span class="label">다크 모드</span>
+      <label class="switch">
+        <input type="checkbox" id="darkModeSwitch" />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- 하단 바 표시 토글 추가 -->
+    <div class="infobar-toggle" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+      <span class="label" style="font-size: 14px;">하단 정보 바 표시</span>
+      <label class="switch">
+        <input type="checkbox" id="infoBarSwitch" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="profile-layer-btns">
+      <button id="closeProfileBtn">닫기</button>
+    </div>
+  </div>
+
+  <div id="sessionAlert" class="session-alert" style="display: none;"></div>
+
+<style>
+  /* 다크모드 시 하단 바(info-bar-fixed) 스타일 강제 적용 */
+  body.dark-mode .info-bar-fixed,
+  body.dark-mode .bottom-info-bar {
+    background-color: #1e293b !important; /* 다크모드용 배경색 */
+    border-top: 1px solid #334155 !important;
+    color: #f1f5f9 !important;
+  }
+  body.dark-mode .info-bar-fixed .info-value,
+  body.dark-mode .bottom-info-bar .value-text {
+    color: #38bdf8 !important; /* 강조 텍스트 색상 변경 */
+  }
+  
+  /* 하단 바 숨김 처리를 위한 유틸리티 클래스 */
+  body.hide-infobar .info-bar-fixed,
+  body.hide-infobar .bottom-info-bar {
+    display: none !important;
+  }
+  /* 하단 바가 숨겨질 때 본문 패딩 조정 */
+  body.hide-infobar {
+    padding-bottom: 0 !important;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const $ = (sel) => document.querySelector(sel);
+  const menuToggleBtn = $("#menuToggle");
+  const profileBtn = $("#profileBtn");
+  const profileLayer = $("#profileLayer");
+  const closeProfileBtn = $("#closeProfileBtn");
+  const timerEl = $("#sessionTimer");
+  const timerIcon = $("#timerIcon");
+  const refreshBtn = $("#refreshSessionBtn");
+  const logoutBtn = $("#logoutBtn");
+  const profileNameInput = $("#profileName");
+  const profileEmailInput = $("#profileEmail");
+  const alertBox = $("#sessionAlert");
+  const darkSwitch = $("#darkModeSwitch");
+  
+  // 하단 바 스위치 추가
+  const infoBarSwitch = $("#infoBarSwitch");
+  
+  let timerInterval = null;
+
+  // 🚩 중복 클릭 방지용 플래그
+  let isRefreshing = false;
+
+  function setAlert(msg, autoHideMs = 1500) {
+    if(!alertBox) return;
+    alertBox.textContent = msg;
+    alertBox.style.display = "block";
+    setTimeout(() => (alertBox.style.display = "none"), autoHideMs);
+  }
+
+  // --- 테마 로드 ---
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    document.body.classList.add("dark-mode");
+    if(darkSwitch) darkSwitch.checked = true;
+  }
+
+  darkSwitch?.addEventListener("change", () => {
+    if (darkSwitch.checked) {
+      document.body.classList.add("dark-mode");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.body.classList.remove("dark-mode");
+      localStorage.setItem("theme", "light");
+    }
+  });
+
+  // --- 하단 정보 바 표시 토글 로직 ---
+  function toggleInfoBar(show) {
+    // 프래그먼트별로 다른 클래스명을 모두 대응 (info-bar-fixed 또는 bottom-info-bar)
+    const infoBars = document.querySelectorAll(".info-bar-fixed, .bottom-info-bar");
+    
+    if (show) {
+      document.body.classList.remove("hide-infobar");
+      infoBars.forEach(bar => {
+        bar.style.setProperty('display', 'flex', 'important');
+      });
+    } else {
+      document.body.classList.add("hide-infobar");
+      infoBars.forEach(bar => {
+        bar.style.setProperty('display', 'none', 'important');
+      });
+    }
+  }
+
+  // 초기 상태 로드 (지연 실행을 통해 DOM 렌더링 후 적용 보장)
+  const savedInfoBar = localStorage.getItem("showInfoBar");
+  if (savedInfoBar === "false") {
+    if (infoBarSwitch) infoBarSwitch.checked = false;
+    // 하단바 프래그먼트가 로드되는 시간을 고려하여 지연 처리
+    setTimeout(() => toggleInfoBar(false), 200);
+  } else {
+    if (infoBarSwitch) infoBarSwitch.checked = true;
+    setTimeout(() => toggleInfoBar(true), 200);
+  }
+
+  infoBarSwitch?.addEventListener("change", () => {
+    const isChecked = infoBarSwitch.checked;
+    toggleInfoBar(isChecked);
+    localStorage.setItem("showInfoBar", isChecked);
+  });
+
+  // ✅ 타이머 로직 (Math.ceil 보정 버전 유지)
+  function startTimer(remainingMillis) {
+    if (timerInterval) clearInterval(timerInterval);
+    const endTime = Date.now() + remainingMillis;
+
+    tick(); 
+    timerInterval = setInterval(tick, 1000);
+
+    function tick() {
+      const remain = endTime - Date.now();
+      if (remain <= 0) {
+        clearInterval(timerInterval);
+        if(timerEl) timerEl.textContent = "00:00";
+        if(timerIcon) timerIcon.style.color = "var(--top-alert-danger-text)";
+        setAlert("세션이 만료되었습니다.", 2000);
+        localStorage.removeItem("token");
+        setTimeout(() => (location.href = "/login"), 1500);
+        return;
+      }
+
+      const totalSeconds = Math.ceil(remain / 1000); 
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+
+      if(timerEl) timerEl.textContent = `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      if(timerIcon) timerIcon.style.color = remain <= 5*60*1000 ? "var(--top-alert-warning-text)" : "";
+    }
+  }
+
+  async function initProfileAndTimer() {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/auth/validate", {
+        headers: token ? {"Authorization":"Bearer "+token} : {},
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setAlert("세션이 없습니다.", 2000);
+        localStorage.removeItem("token");
+        setTimeout(() => (location.href="/login"), 1200);
+        return;
+      }
+      startTimer(data.remainingMillis ?? 0);
+      if(profileNameInput) profileNameInput.value = data.name || data.username || "";
+      if(profileEmailInput) profileEmailInput.value = data.email || "";
+    } catch { setAlert("세션 확인 실패", 1500); }
+  }
+
+  // ✅ 세션 연장 본체 (중복 클릭 방지 강화)
+  async function refreshSession() {
+    // 🚩 1단계: 플래그 체크
+    if (isRefreshing) return;
+    isRefreshing = true;
+
+    // 🚩 2단계: UI 즉시 비활성화 (버튼 클릭 방지 스타일)
+    if (refreshBtn) refreshBtn.style.pointerEvents = "none";
+    console.log("세션 연장 시작..."); 
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: token ? { "Authorization": "Bearer " + token } : {},
+        credentials: "include"
+      });
+      
+      const body = await res.json().catch(() => ({}));
+      
+      if (!res.ok) { 
+        setAlert(body.error || "세션 연장 실패", 1500); 
+        return; 
+      }
+      
+      if (body.token) localStorage.setItem("token", body.token);
+      setAlert("세션이 연장되었습니다.", 1000);
+      startTimer(body.sessionMillis ?? 15 * 60 * 1000);
+
+    } catch (err) { 
+      setAlert("세션 연장 중 오류", 1500); 
+    } finally {
+      // 🚩 3단계: 1초 후 지연 해제 (네트워크 지연 및 물리적 연타 방지)
+      setTimeout(() => {
+        isRefreshing = false;
+        if (refreshBtn) refreshBtn.style.pointerEvents = "auto";
+      }, 1000);
+    }
+  }
+
+  async function doLogout() {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch("/auth/logout", {method:"POST",headers: token?{"Authorization":"Bearer "+token}:{},credentials:"include"});
+    } finally {
+      localStorage.removeItem("token");
+      setAlert("로그아웃 되었습니다.", 800);
+      setTimeout(() => (location.href = "/login"), 800);
+    }
+  }
+
+  menuToggleBtn?.addEventListener("click", () => {
+    if (typeof window.toggleSidebar === "function") window.toggleSidebar();
+    else document.querySelector(".sidebar")?.classList.toggle("open");
+  });
+
+  profileBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (profileLayer) profileLayer.style.display = profileLayer.style.display === "block" ? "none" : "block";
+  });
+
+  closeProfileBtn?.addEventListener("click", () => {
+    if (profileLayer) profileLayer.style.display = "none";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (profileLayer?.style.display === "block" && !profileLayer.contains(e.target) && e.target !== profileBtn) {
+      profileLayer.style.display = "none";
+    }
+  });
+
+  // ✅ 클릭 리스너 강화 (이벤트 전파 완전 차단)
+  refreshBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    refreshSession();
+  });
+
+  logoutBtn?.addEventListener("click", doLogout);
+
+  initProfileAndTimer();
+});
+</script>
+</div>

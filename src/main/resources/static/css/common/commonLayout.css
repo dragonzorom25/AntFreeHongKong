@@ -1,0 +1,342 @@
+/* ===============================================================
+   ✅ commonLayout.css (v1.3 - 최종 안정화 및 인풋 FIX)
+   ---------------------------------------------------------------
+   - FIX: 다크 모드 시 인풋 필드 배경색 분리
+   - FIX: content-container의 min-height 계산 정확화
+   - FIX: breadcrumb multiline 처리 제거 및 한 줄 유지
+================================================================ */
+
+/* ===============================================================
+   🚨 모바일 폼/터치 FIX (자동 확대/더블탭 확대 방지) - 2025.11 통합
+================================================================ */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+textarea,
+select {
+  /* 최소 16px을 적용하여 모바일 입력창 클릭 시 자동 확대 방지 */
+  font-size: 16px !important; 
+}
+
+body {
+    /* 더블 탭 확대/축소 비활성화 (전역 레이아웃/터치 Fix) */
+	/* touch-action: manipulation; 👈 이걸 주석 처리하거나 아래처럼 변경하세요 */
+    touch-action: pan-x pan-y; /* 가로/세로 스크롤은 브라우저 기본 기능을 써라! */
+}
+
+/* ===============================================================
+   🌙 다크모드 대응 전역 변수 추가 (2025.11 통합)
+================================================================ */
+:root {
+  --layout-bg: #f9fafb;
+  --layout-text: #111827;
+  --layout-border: #e5e7eb;
+  --layout-header: #111827;
+  --layout-muted: #6b7280;
+  --layout-accent: #2563eb;
+  --layout-btn-bg: #2563eb;
+  --layout-btn-hover: #1d4ed8;
+  --layout-btn-text: #fff;
+  --layout-btn-gray: #6b7280;
+  --layout-btn-red: #dc2626;
+  --layout-btn-green: #16a34a;
+  /* 🚩 NEW: 인풋 전용 배경색 (Light) */
+  --layout-input-bg: #fff;
+}
+
+body.dark-mode {
+  --layout-bg: #111827;
+  --layout-text: #f3f4f6;
+  --layout-border: #374151;
+  --layout-header: #f9fafb;
+  --layout-muted: #9ca3af;
+  --layout-accent: #3b82f6;
+  --layout-btn-bg: #3b82f6;
+  --layout-btn-hover: #2563eb;
+  --layout-btn-text: #f9fafb;
+  --layout-btn-gray: #4b5563;
+  --layout-btn-red: #ef4444;
+  --layout-btn-green: #10b981;
+  /* 🚩 NEW FIX: 인풋 전용 배경색 (Dark) - 주변 배경보다 살짝 밝게 */
+  --layout-input-bg: #1f2937; 
+  background: var(--layout-bg);
+  color: var(--layout-text);
+}
+
+/* 🔤 전역 */
+html {
+  box-sizing: border-box;
+}
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+html, body {
+  font-family: "Pretendard","Noto Sans KR","Apple SD Gothic Neo",
+    "Malgun Gothic","맑은 고딕","돋움",sans-serif;
+  font-size: 14px;
+  color: var(--layout-text);
+  line-height: 1.5;
+  background: var(--layout-bg);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+
+  /* 🚩 최종 FIX: height/min-height 강력 고정 (var(--vh) 사용) */
+  height: calc(var(--vh) * 100); 
+  min-height: calc(var(--vh) * 100); 
+  
+  /* 스크롤 바운스 완화 2 */
+  overscroll-behavior-y: none; 
+}
+
+/* ===============================================================
+   ✅ 기본 레이아웃
+================================================================ */
+.content-container {
+  padding: 20px 25px 80px 25px;
+  background: var(--layout-bg);
+  /* 🚩 FIX: min-height 계산 정확화 */
+  /* Top Bar (50px) + Footer (50px 가정) = 총 100px 제외 */
+  min-height: calc(var(--vh) * 100 - 100px); 
+  box-sizing: border-box;
+  
+  /* 🚩 추가: 컨테이너가 테이블 따라 옆으로 벌어지는 것 방지 */
+  width: 100%;
+  max-width: 100vw; 
+  overflow-x: hidden; 
+  position: relative;
+}
+.main-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 2%;
+  box-sizing: border-box;
+}
+
+/* ===============================================================
+   ✅ 페이지 헤더 (타이틀 + 경로)
+================================================================ */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--layout-border);
+  padding-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 제목 */
+.page-header .page-title h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--layout-header);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* 오른쪽 경로 (breadcrumb) */
+.page-header .breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--layout-muted);
+  font-size: 12.5px;      
+  line-height: 1.4;
+  text-align: right;
+  justify-content: flex-end;
+  max-width: 100%;
+  white-space: nowrap;     /* ✅ 1줄 고정 (overflow 처리) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.page-header .breadcrumb i {
+  font-size: 12px;
+  color: var(--layout-border);
+}
+/* 🚩 FIX: breadcrumb.multiline 클래스 제거 (강제 1줄 처리 유지) */
+
+/* 반응형 breadcrumb 크기 자동조정 */
+@media (max-width: 768px) {
+  .page-header .breadcrumb { font-size: 11.5px; }
+}
+@media (max-width: 480px) {
+  .page-header .breadcrumb { font-size: 11px; }
+}
+
+/* ===============================================================
+   ✅ 검색 바 / 툴바
+================================================================ */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.search-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-group input[type="text"] {
+  padding: 7px 10px;
+  border: 1px solid var(--layout-border);
+  border-radius: 5px;
+  outline: none;
+  width: 180px;
+  font-size: 14px;
+  /* 🚩 FIX: 인풋 전용 배경색 변수 사용 */
+  background: var(--layout-input-bg);
+  color: var(--layout-text);
+}
+.search-group input[type="text"]:focus {
+  border-color: var(--layout-accent);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+
+/* ===============================================================
+   ✅ 버튼 공통
+================================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: var(--layout-btn-bg);
+  border: none;
+  color: var(--layout-btn-text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.15s;
+}
+.btn:hover { background: var(--layout-btn-hover); }
+.btn.gray { background: var(--layout-btn-gray); }
+.btn.red { background: var(--layout-btn-red); }
+.btn.excel { background: var(--layout-btn-green); }
+.btn.gray:hover { background: #4b5563; }
+.btn.red:hover { background: #b91c1c; }
+.btn.excel:hover { background: #15803d; }
+
+/* ===============================================================
+   ✅ 리스트 상단 정보줄 (총건수 + 엑셀 등)
+================================================================ */
+.list-info {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--layout-text);
+  width: 100%;
+}
+.list-info span#totalCount {
+  flex-shrink: 0;
+  text-align: left;
+}
+.list-info .action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ===============================================================
+   ✅ 폼 공통
+================================================================ */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.form-group label {
+  font-weight: 600;
+  color: var(--layout-text);
+  font-size: 13px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  border: 1px solid var(--layout-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+  /* 🚩 FIX: 인풋 전용 배경색 변수 사용 */
+  background: var(--layout-input-bg); 
+  color: var(--layout-text);
+  outline: none;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--layout-accent);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+}
+.input-error {
+  border-color: var(--layout-btn-red) !important;
+  /* 🚩 FIX: 다크모드 대응을 위해 배경색 변수 사용 권장 (현재는 라이트모드 색상 고정) */
+  background: #fef2f2; 
+}
+.option-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ===============================================================
+   ✅ 반응형 세분화 (완전 대응)
+================================================================ */
+@media (max-width: 360px) {
+  html, body { font-size: 12px; }
+  .page-header .page-title h2 { font-size: 13px; }
+  .page-header .breadcrumb { font-size: 11.5px; }
+  .btn { padding: 4px 8px; font-size: 12px; }
+  .search-group input { font-size: 12px; padding: 6px 8px; }
+}
+
+@media (max-width: 480px) {
+  html, body { font-size: 13px; }
+  .content-container { padding: 10px 14px 80px 14px; } 
+  .page-header { margin-bottom: 6px; }
+  .page-header .page-title h2 { font-size: 14px; }
+  .page-header .breadcrumb { font-size: 11px; }
+  .btn { padding: 5px 10px; font-size: 12.5px; }
+  .toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
+  .search-group { width: 100%; }
+  .list-info { flex-direction: column; align-items: stretch; gap: 4px; }
+}
+
+@media (max-width: 768px) {
+  html, body { font-size: 13px; }
+  .content-container { padding: 15px 18px 80px 18px; }
+  .page-header .page-title h2 { font-size: 15px; }
+  .list-info { flex-direction: row; justify-content: space-between; }
+  .btn { font-size: 13px; padding: 6px 11px; }
+}
+
+@media (max-width: 1024px) {
+  .content-container { padding: 18px 20px 80px 20px; }
+  .page-header .page-title h2 { font-size: 16px; }
+  .page-header .breadcrumb { font-size: 12px; }
+}
+
+@media (min-width: 1025px) {
+  .content-container { padding: 20px 25px 80px 25px; }
+  .page-header .page-title h2 { font-size: 17px; }
+  .page-header .breadcrumb { font-size: 12.5px; }
+}

@@ -1,0 +1,161 @@
+/* ===============================================================
+   ✅ commonTable.css (v2.9 - 우측 공백 해결 및 유동 너비 적용)
+   ---------------------------------------------------------------
+   - FIX: 우측 하얀 공백 현상 해결 (width: 100% 강제)
+   - FIX: 제목 컬럼 유동 너비 확보를 위한 table-layout 최적화
+   - FIX: 드롭다운 메뉴 최상단 노출 유지
+================================================================ */
+
+:root {
+  --table-bg: #ffffff;
+  --table-text: #111827;
+  --table-border: #e5e7eb;
+  --table-header-bg: #e5e7eb;
+  --table-header-text: #1f2937;
+  --table-row-alt: #f9fafb;
+  --table-link: #2563eb;
+  --table-overlay-bg: rgba(255,255,255,0.8);
+  --table-spinner-border: #d1d5db;
+  --table-spinner-accent: #2563eb;
+  --global-overlay-bg: rgba(0,0,0,0.15);
+}
+
+body.dark-mode {
+  --table-bg: #1f2937;
+  --table-text: #f3f4f6;
+  --table-border: #374151;
+  --table-header-bg: #374151;
+  --table-header-text: #f9fafb;
+  --table-row-alt: #111827;
+  --table-link: #3b82f6;
+  --table-overlay-bg: rgba(17,24,39,0.85);
+  --table-spinner-border: #4b5563;
+  --table-spinner-accent: #3b82f6;
+  --global-overlay-bg: rgba(17,24,39,0.7);
+  background: #111827;
+  color: var(--table-text);
+}
+
+/* 🧾 테이블 컨테이너 */
+.table-container {
+  width: 100%;
+  max-width: 100%; 
+  background: var(--table-bg) !important;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  position: relative;
+  
+  /* 🚩 [중요] 가로 스크롤이 필요할 때만 생기도록 처리 */
+  overflow-x: auto !important; 
+  overflow-y: auto !important;
+  
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y; 
+  max-height: 75vh;
+  min-height: 350px; 
+  background-clip: padding-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ✅ 테이블 본체 수정 */
+table {
+  width: 100% !important; /* 🚩 100%로 설정하여 하얀 공백 제거 */
+  min-width: 1100px; /* 🚩 내용이 깨지지 않는 최소한의 너비만 유지 */
+  border-collapse: separate; 
+  border-spacing: 0;
+  background: var(--table-bg);
+  /* 🚩 fixed 해제 혹은 유동적 운용: script에서 설정한 너비를 지키되 남는공간 활용 */
+  table-layout: fixed; 
+}
+
+/* ✅ 헤더 고정 및 스타일 */
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  z-index: 100; /* 🚩 드롭다운과의 간섭을 위해 z-index 조정 */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  border-bottom: 1px solid var(--table-border);
+}
+
+/* ✅ 셀 공통 스타일 */
+th, td {
+  border-bottom: 1px solid var(--table-border);
+  padding: 10px 8px;
+  vertical-align: middle;
+  color: var(--table-text);
+  /* 🚩 제목 등이 너무 길면 말줄임표 처리 */
+  white-space: nowrap;
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+
+/* 🚩 [수정] 드롭다운이 포함된 셀은 메뉴가 보여야 하므로 overflow hidden 해제 */
+td:has(.app-dropdown), 
+td.column-mstock { 
+  overflow: visible !important; 
+}
+
+th { font-weight: 600; font-size: 13px; text-align: center; }
+td { font-size: 12px; text-align: left; } /* 🚩 폰트 크기 살짝 조정 */
+
+/* 🚩 앱 드롭다운 스타일 */
+.app-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.app-dropbtn {
+    background-color: #4f46e5;
+    color: white;
+    padding: 5px 8px;
+    font-size: 11px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    min-width: 70px;
+}
+
+.app-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: #ffffff;
+    min-width: 130px;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+    z-index: 1000 !important; 
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.app-dropdown-content a {
+    color: #333 !important;
+    padding: 8px 12px;
+    text-decoration: none !important;
+    display: block;
+    font-size: 11px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.app-dropdown-content a:hover { background-color: #f1f5ff; }
+.app-dropdown:hover .app-dropdown-content { display: block !important; }
+
+/* 기존 로직 유지 */
+tbody tr:nth-child(even) td { background: var(--table-row-alt); }
+td a { color: var(--table-link); text-decoration: none; }
+
+.global-loading-overlay { 
+  position: absolute; 
+  top: 0; left: 0; width: 100%; height: 100%; 
+  display: none; justify-content: center; align-items: center; 
+  background: var(--global-overlay-bg); z-index: 99; border-radius: 10px;
+}
+.global-spinner-wrap .spinner { 
+  width: 40px; height: 40px; border: 4px solid var(--table-spinner-border); 
+  border-top-color: var(--table-spinner-accent); border-radius: 50%; 
+  animation: spin 1s linear infinite; 
+}
+@keyframes spin { to { transform: rotate(360deg); } }

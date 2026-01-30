@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_layout}">
+
+<head>
+  <meta charset="UTF-8">
+  <title>뉴스통합RSS</title>
+</head>
+
+<body>
+<div layout:fragment="content">
+
+  <div class="content-container">
+    <div class="page-header">
+      <div class="page-title">
+        <h2 th:text="${pageTitle} ?: '📄 기본 페이지 제목'">📄 뉴스</h2>
+      </div>
+      <div class="breadcrumb">
+        <i class="fas fa-folder-open"></i>
+        <span th:text="${breadcrumb} ?: '시스템 / 기본 경로'">뉴스 / 뉴스통합RSS</span>
+      </div>
+    </div>    
+
+    <div class="toolbar">
+      <div class="search-group">
+        <input type="text" id="searchInput" placeholder="검색어 입력" />
+        <button id="searchBtn" class="btn"><i class="fas fa-search"></i></button>
+      </div>
+    </div>
+
+    <div class="list-info">
+      <span id="totalCount">총 0건</span>
+      <div class="action-buttons">
+        <button id="excelBtn" class="btn excel" title="엑셀 다운로드"><i class="fa-solid fa-file-excel"></i></button>
+        <button id="addBtn" class="btn" title="추가"><i class="fas fa-plus"></i></button>
+        <button id="deleteSelectedBtn" class="btn red" title="삭제"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+    
+	<!-- 시작 : 공통 테이블 구조 -->
+    <div style="position: relative;">
+        <div id="globalLoading" class="global-loading-overlay">
+            <div class="global-spinner-wrap">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead id="headerTable"></thead>
+            <tbody id="dataTable"></tbody>
+          </table>
+        </div>
+    </div> 
+    
+    <div id="pagination" class="pagination"></div>
+    <!-- 종료 : 공통 테이블 구조 -->
+    
+  </div>
+  
+</div>
+
+<th:block layout:fragment="pageScript">
+<script>
+/**
+ * ✅ 기기별 최적화 앱 호출 함수 (순차 Fallback 방식)
+ * 1. 신형/구형 스킴을 배열에 담아 순차적으로 실행
+ * 2. 0.6초 간격으로 시도하여 앱이 설치된 경우 즉시 반응 유도
+ */
+function openBrokerApp(type, stockCode) {
+    if (!stockCode || stockCode.trim() === "") {
+        alert("종목 코드가 없습니다.");
+        return;
+    }
+
+    const ua = navigator.userAgent.toLowerCase();
+    const isAndroid = ua.includes("android");
+    const isIos = /iphone|ipad|ipod/.test(ua);
+
+    const urls = [];
+
+    /* ===============================
+       1️⃣ 증권사별 스킴 / 인텐트 풀세트
+       =============================== */
+    switch (type) {
+        case "mstock":
+            // 미래에셋증권 (M-STOCK)
+            if (isIos) {
+                urls.push(`miraeasset-mstock://open?page=1101&code=${stockCode}`); // 신형
+                urls.push(`mstock://open?page=1101&code=${stockCode}`);            // 구형
+            } else if (isAndroid) {
+                // 최신 통합앱 패키지(com.miraeasset.trade) 우선순위
+                urls.push(`intent://open?page=1101&code=${stockCode}#Intent;scheme=mstock;package=com.miraeasset.trade;end`);
+                urls.push(`mstock://open?page=1101&code=${stockCode}`);
+            }
+            break;
+
+        case "kiwoom":
+            // 키움증권 (영웅문S#)
+            if (isIos) {
+                urls.push(`kiwoommts://open?page=100&code=${stockCode}`);
+            } else if (isAndroid) {
+                urls.push(`intent://open?page=100&code=${stockCode}#Intent;scheme=kiwoommts;package=com.pantech.app.kiwoom;end`);
+                urls.push(`kiwoommts://open?page=100&code=${stockCode}`);
+            }
+            break;
+
+        case "toss":
+            // 토스 (주식 상세)
+            urls.push(`supertoss://stock/detail?code=${stockCode}`);
+            break;
+
+        case "kakao":
+            // 카카오페이증권
+            urls.push(`kakaotalk://kakaopay/securities/stock_detail?stock_code=${stockCode}`);
+            break;
+
+        case "namu":
+            // NH투자증권 (나무)
+            urls.push(`nhqvnamu://open?page=stockDetail&code=${stockCode}`);
+            break;
+
+        default:
+            // 기본값은 미래에셋 신형으로 시도
+            urls.push(`miraeasset-mstock://open?page=1101&code=${stockCode}`);
+    }
+
+    /* ===============================
+       2️⃣ 실행 로직 (0.6초 간격 순차 fallback)
+       =============================== */
+    let idx = 0;
+
+    const tryOpen = () => {
+        // 모든 후보 주소를 다 찔러봤으면 종료
+        if (idx >= urls.length) return;
+
+        const url = urls[idx++];
+        console.log(`[App Launch Try ${idx}] : ${url}`);
+        
+        // 브라우저 화면 이동 (앱이 있으면 실행되고, 없으면 변화 없음)
+        window.location.href = url;
+
+        // 0.6초 뒤에 다음 후보 주소 실행 (첫 번째가 실패했을 경우 대비)
+        setTimeout(tryOpen, 600);
+    };
+
+    tryOpen();
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  initUnifiedList({
+    mode: "server", // server or client
+    pagination: false,
+    apiUrl: "/api/newsRssTypeAList",
+    tableBodySelector: "#dataTable",
+    paginationSelector: "#pagination",
+    searchInputSelector: "#searchInput",
+    searchBtnSelector: "#searchBtn",
+    addBtnSelector: "#addBtn",
+    modalId: "#addModal",
+    saveBtnSelector: "#saveBtn",
+    closeBtnSelector: "[data-close]",
+    checkAllSelector: "#checkAll",
+    deleteSelectedBtnSelector: "#deleteSelectedBtn",
+    detailModalId: "#detailModal",
+    updateBtnSelector: "#updateBtn",
+    excelBtnSelector: "#excelBtn",
+
+    excelFileName: "엑셀리스트.xlsx",
+    
+    columns: [
+      { columnId: "id", label: "No", width: "30px", align: "center"},
+      { columnId: "stockCode", label: "stockCode", hidden: true},
+      { columnId: "stockName", label: "종목", width: "50px", fontWeight: "400", color: "blue"},
+      { columnId: "featureOption", label: "키워드", width: "50px", align: "center"},
+      { columnId: "title", label: "제목", width: "300px"}, 
+      { columnId: "link", label: "Link", width: "50px", isExternalLink: true, align: "center"},
+      { columnId: "mstock", label: "mstock" ,  width: "60px",
+    	  align: "center",
+          formatter: (val, row) => {
+              if (row.stockCode && row.stockCode.length >= 6) {
+                  return `
+                      <div class="app-dropdown" onclick="event.stopPropagation();">
+                          <button class="app-dropbtn">앱 선택 ▾</button>
+                          <div class="app-dropdown-content">
+                              <a href="javascript:void(0)" onclick="openBrokerApp('mstock', '${row.stockCode}')">미래에셋</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('kiwoom', '${row.stockCode}')">키움 영웅문</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('kakao', '${row.stockCode}')">카카오페이</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('toss', '${row.stockCode}')">토스증권</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('namu', '${row.stockCode}')">NH 나무</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('kb', '${row.stockCode}')">KB M-able</a>
+                              <a href="javascript:void(0)" onclick="openBrokerApp('shinhan', '${row.stockCode}')">신한 알파</a>
+                          </div>
+                      </div>
+                  `;
+              }
+              return "-";
+          } 
+      },
+      { columnId: "rawDate", label: "등록일", width: "70px" },
+      { columnId: "serverStatus", label: "서버 상태", width: "40px", align: "center" }
+    ],
+    pageSize: 10,
+    pageGroupSize: window.pageGroupSize, 
+    enableRowClickDetail: false,
+    enableDetailView: true,
+    buttons: {
+      search: true,
+      searchInput: true,
+      add: false,
+      deleteSelected: false,
+      excel: false
+    },
+    detailViewButtons: {
+      update: false,
+      delete: false
+    },
+    
+    onDetailModalOpen: (id) => console.log("🔍 Detail Modal Open:", id),
+    
+    
+ // 🔥 [추가된 위치] 데이터 렌더링 완료 후 실행되는 콜백
+    onRenderSuccess: () => {
+        console.log("✅ [뉴스 리스트] 데이터 렌더링이 완료되었습니다.");
+        
+        // 예시: 렌더링 후 특정 로직 처리
+        const rows = document.querySelectorAll("#dataTable tr");
+        rows.forEach(row => {
+            // 예: 제목에 '급등'이 포함되면 행 배경색 노란색으로 변경
+            if (row.innerText.includes("급등")) {
+                row.style.backgroundColor = "#fffde7";
+            }
+            
+            // 예: 서버 상태 텍스트에 따라 배지 스타일 입히기 (DOM 직접 조작)
+            const statusCell = row.lastElementChild; 
+            if (statusCell && statusCell.innerText.trim() === "OFF") {
+                statusCell.innerHTML = `<span style="background: #fee2e2; color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 11px;">OFF</span>`;
+            } else if (statusCell && statusCell.innerText.trim() === "ON") {
+                statusCell.innerHTML = `<span style="background: #dcfce7; color: #22c55e; padding: 2px 6px; border-radius: 4px; font-size: 11px;">ON</span>`;
+            }
+        });
+    },
+    
+    
+  });
+
+  // 엔터키 검색 이벤트
+  const searchInput = document.getElementById("searchInput");
+  const searchBtn = document.getElementById("searchBtn");
+  if (searchInput && searchBtn) {
+      searchInput.addEventListener("keydown", e => {
+          if (e.key === "Enter") searchBtn.click(); 
+      });
+  }
+
+  // 커스텀 필터 예시 로직 (필요 시 사용)
+  const customFilterBtn = document.getElementById("customFilterBtn");
+  if (customFilterBtn) {
+    customFilterBtn.addEventListener("click", () => {
+      unifiedListManager.loadList(0, "web", "filter=active");
+    });
+  }
+  
+});
+</script>
+</th:block>
+</body>
+</html>

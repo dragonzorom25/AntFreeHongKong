@@ -1,0 +1,212 @@
+/* ===============================================================
+   ✅ commonLeft.css (v1.3 - UX/계층 명확성 및 FIX)
+   ---------------------------------------------------------------
+   - 좌측 사이드바 / 서브메뉴 / 토글 / 다단계 5단 완전 대응
+   - FIX: 탑바(Top-bar) 하단에 밀착하며 탑바 아래 레이어에 위치
+================================================================ */
+
+/* ---------------------------------------------------------------
+   🔹 전역 변수 (색상 정의)
+---------------------------------------------------------------- */
+:root {
+  /* 라이트 모드 */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-text: #1f2937;
+  --sidebar-hover-bg: #f3f4f6;
+  --sidebar-active-bg: #e5e7eb;
+  --sidebar-level-1-bg: #f9fafb; /* 1단계 submenu */
+  --sidebar-level-2-bg: #f3f4f6; /* 2단계 submenu */
+  --sidebar-level-3-bg: #e5e7eb; /* 3단계 submenu */
+  --sidebar-level-4-bg: #e0e0e0; /* 4단계 submenu */
+  --sidebar-level-5-bg: #d6d6d6; /* 5단계 submenu */
+}
+
+body.dark-mode {
+  /* 다크 모드 */
+  --sidebar-bg: #1e293b;
+  --sidebar-border: #334155;
+  --sidebar-text: #e2e8f0;
+  --sidebar-hover-bg: #334155;
+  --sidebar-active-bg: rgba(37, 99, 235, 0.2);
+  --sidebar-active-text: #93c5fd;
+  --sidebar-level-1-bg: #273449; /* 1단계 submenu */
+  --sidebar-level-2-bg: #334155; /* 2단계 submenu */
+  --sidebar-level-3-bg: #2b364a; /* 3단계 submenu */
+  --sidebar-level-4-bg: #222c3f; /* 4단계 submenu */
+  --sidebar-level-5-bg: #1b2435; /* 5단계 submenu */
+}
+
+/* ---------------------------------------------------------------
+   🔹 사이드바 컨테이너
+---------------------------------------------------------------- */
+.sidebar {
+  /* 🚩 탑바 아래 밀착 및 운명공동체 설정 */
+  position: absolute;
+  top: 0; /* layoutWrapper 내부 최상단(탑바 하단 지점)에 붙임 */
+  left: 0;
+  width: 240px;
+  height: 100%; /* 콘텐츠 높이와 동기화 */
+  min-height: calc(100vh - 50px);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  overflow-y: visible; /* 문서 전체 스크롤을 따름 */
+  transition: transform 0.25s ease, background 0.25s ease;
+  z-index: 3500; /* 탑바(5000)보다 아래에 위치 */
+}
+
+/* 메뉴 닫힘 (모바일) */
+.sidebar:not(.open) {
+  transform: translateX(-100%);
+}
+
+/* 🌙 다크 모드 그림자 보강 */
+body.dark-mode .sidebar {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------
+   🔹 오버레이
+---------------------------------------------------------------- */
+#sidebarOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  display: none;
+  z-index: 3000;
+}
+
+/* ---------------------------------------------------------------
+   🔹 메뉴 기본 구조
+---------------------------------------------------------------- */
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar li {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+body.dark-mode .sidebar li {
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-weight: 500;
+}
+
+.sidebar a i {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------
+   🔹 hover / active
+---------------------------------------------------------------- */
+.sidebar a:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-text);
+}
+
+/* ✅ 활성 메뉴: 기본 (1단계) */
+.sidebar a.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-text);
+  font-weight: 700;
+}
+
+/* 🌙 다크 모드 hover / active */
+body.dark-mode .sidebar a:hover {
+  background: var(--sidebar-hover-bg);
+}
+body.dark-mode .sidebar a.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+/* ---------------------------------------------------------------
+   🔹 서브메뉴 (5단계 완전 대응)
+---------------------------------------------------------------- */
+.submenu {
+  display: none;
+  background: var(--sidebar-level-1-bg);
+}
+.has-submenu.open > .submenu {
+  display: block;
+}
+
+/* 🚩 서브메뉴 진입시 폰트 두께 완화 */
+.submenu a {
+  font-weight: 400; 
+}
+
+/* 1단계 */
+.submenu a {
+  padding-left: 34px;
+  font-size: 13px;
+  background: var(--sidebar-level-1-bg);
+}
+/* 2단계 */
+.submenu .submenu a {
+  padding-left: 54px;
+  background: var(--sidebar-level-2-bg);
+}
+/* 3단계 */
+.submenu .submenu .submenu a {
+  padding-left: 74px;
+  background: var(--sidebar-level-3-bg);
+}
+/* 4단계 */
+.submenu .submenu .submenu .submenu a {
+  padding-left: 94px;
+  background: var(--sidebar-level-4-bg);
+}
+/* 5단계 */
+.submenu .submenu .submenu .submenu .submenu a {
+  padding-left: 114px;
+  background: var(--sidebar-level-5-bg);
+}
+
+/* ---------------------------------------------------------------
+   🔹 토글 아이콘
+---------------------------------------------------------------- */
+.toggle-icon {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.has-submenu > a {
+  justify-content: space-between; 
+}
+
+.has-submenu.open > a .toggle-icon {
+  transform: rotate(90deg);
+}
+
+/* ---------------------------------------------------------------
+   🔹 반응형
+---------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 230px;
+    position: absolute;
+    top: 0;
+    height: 100%;
+    min-height: calc(var(--vh, 1vh) * 100 - 50px);
+  }
+}

@@ -1,0 +1,258 @@
+/* ===============================================================
+   ✅ commonModal.css (v1.1 - UX 및 스크롤 FIX 안정판)
+   ---------------------------------------------------------------
+   - FIX: 모달 오픈 시 Body 스크롤 완전히 고정 (배경 스크롤 방지)
+   - FIX: 인풋 오류 시각적 피드백 강화
+   - 반응형 완전 대응 (360~1024px)
+================================================================ */
+
+/* ===============================================================
+   🌙 다크모드 대응 전역 변수 추가 (2025.11 통합)
+================================================================ */
+:root {
+  --modal-bg: #ffffff;
+  --modal-header-bg: #f3f4f6;
+  --modal-header-text: #111827;
+  --modal-border: #e5e7eb;
+  --modal-label: #374151;
+  --modal-input-bg: #fff;
+  --modal-input-border: #d1d5db;
+  --modal-input-text: #111827;
+  --modal-overlay-bg: rgba(255,255,255,0.7);
+  --modal-spinner-border: #d1d5db;
+  --modal-spinner-accent: #2563eb;
+  /* 🚩 NEW: 인풋 오류 상태 색상 */
+  --modal-input-error-border: #ef4444;
+  --modal-input-error-bg: #fef2f2;
+}
+
+body.dark-mode {
+  --modal-bg: #1f2937;
+  --modal-header-bg: #374151;
+  --modal-header-text: #f9fafb;
+  --modal-border: #4b5563;
+  --modal-label: #d1d5db;
+  --modal-input-bg: #111827;
+  --modal-input-border: #374151;
+  --modal-input-text: #f3f4f6;
+  --modal-overlay-bg: rgba(17,24,39,0.85);
+  --modal-spinner-border: #4b5563;
+  --modal-spinner-accent: #3b82f6;
+  --modal-input-error-border: #f87171;
+  --modal-input-error-bg: #450a0a;
+  color: var(--modal-input-text);
+}
+
+/* 기본 모달 배경 */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.45);
+  z-index: 4000;
+}
+.modal.active { display: flex; }
+
+/* 🚩 FIX: Body 스크롤 고정 (배경 스크롤 방지) */
+.modal-open {
+  overflow: hidden;
+  position: fixed; /* 뷰포트에 고정 */
+  width: 100%; /* 너비 유지 */
+}
+
+/* 메인 카드 */
+.elegant-modal {
+  background: var(--modal-bg);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  width: 520px;
+  max-width: 95%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInUp 0.25s ease;
+  position: relative;
+}
+
+/* 헤더 */
+.elegant-header {
+  background: var(--modal-header-bg);
+  color: var(--modal-header-text);
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--modal-border);
+  flex-shrink: 0; /* 헤더 크기 고정 */
+}
+.elegant-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.close-btn {
+  cursor: pointer;
+  font-size: 18px;
+  color: #6b7280;
+  transition: 0.15s;
+}
+.close-btn:hover { color: var(--modal-header-text); }
+
+/* 본문 */
+.elegant-body {
+  padding: 15px 18px;
+  background: var(--modal-bg);
+  max-height: 60vh;
+  overflow-y: auto; /* 모달 내부만 스크롤 되도록 */
+  flex-grow: 1; /* 남은 공간을 채우도록 허용 */
+}
+
+/* 내부 폼 (form-row 기반) */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.form-row label {
+  flex: 0 0 100px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--modal-label);
+  font-weight: 600;
+  /* 🚩 FIX: required asterisk */
+  /* content: "*"; color: #ef4444; margin-left: 4px; */
+}
+.form-row input[type="text"],
+.form-row input[type="date"],
+.form-row input[type="number"],
+.form-row select,
+.form-row textarea {
+  flex: 1;
+  padding: 7px 9px;
+  border: 1px solid var(--modal-input-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--modal-input-bg);
+  color: var(--modal-input-text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+/* 🚩 NEW: 인풋 오류 시각적 피드백 강화 */
+.form-row input.input-error,
+.form-row select.input-error,
+.form-row textarea.input-error {
+  border-color: var(--modal-input-error-border);
+  background: var(--modal-input-error-bg);
+  box-shadow: 0 0 0 1px var(--modal-input-error-border);
+}
+
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus {
+  border-color: var(--modal-spinner-accent);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.15);
+  background: var(--modal-input-bg); /* 오류 배경색을 포커스 시 제거 */
+}
+.form-row textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.5;
+}
+.form-row.options {
+  align-items: flex-start;
+}
+.form-row.options label {
+  /* 🚩 FIX: 옵션 레이블은 텍스트 정렬을 왼쪽으로 변경 */
+  text-align: left;
+  flex: 0 0 auto;
+  font-weight: 500;
+  color: var(--modal-label);
+}
+.form-row.options .control-group {
+    /* 체크박스/라디오 그룹 전체 컨테이너 */
+    display: flex;
+    flex-direction: column; /* 세로로 쌓기 */
+    gap: 4px;
+    flex: 1;
+}
+.form-row.options input[type="checkbox"],
+.form-row.options input[type="radio"] {
+  margin-right: 6px;
+  transform: scale(1.1);
+  accent-color: var(--modal-spinner-accent);
+}
+
+/* 푸터 */
+.elegant-footer {
+  padding: 10px 15px;
+  background: var(--modal-header-bg);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--modal-border);
+  flex-shrink: 0; /* 푸터 크기 고정 */
+}
+
+/* 로딩 오버레이 */
+.modal-loading {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--modal-overlay-bg);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  z-index: 10;
+}
+.modal-loading .spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--modal-spinner-border);
+  border-top-color: var(--modal-spinner-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* 애니메이션 */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 반응형 */
+@media (max-width: 480px) {
+  .elegant-modal { width: 96vw; }
+  .form-row { flex-direction: column; align-items: stretch; }
+  
+  /* 🚩 FIX: 레이블 정렬을 왼쪽으로 변경하고 인풋과 분리 */
+  .form-row label { 
+      text-align: left; 
+      flex: unset; 
+      margin-bottom: 3px; /* 레이블과 인풋 사이에 공간 추가 */
+  }
+  
+  /* 🚩 FIX: 옵션 행에서는 레이블에 마진을 주지 않음 */
+  .form-row.options label {
+      margin-bottom: 0;
+  }
+  
+  /* 🚩 FIX: 옵션 인풋 그룹은 수직 정렬 시 가로 공간을 다 사용해야 함 */
+  .form-row.options .control-group {
+      align-items: flex-start;
+      padding-top: 5px; /* 상단 레이블과의 간격 확보 */
+  }
+}
+@media (max-width: 360px) {
+  .form-row label { font-size: 12px; }
+  .form-row input,
+  .form-row select,
+  .form-row textarea { font-size: 13px; padding: 6px 8px; }
+}
