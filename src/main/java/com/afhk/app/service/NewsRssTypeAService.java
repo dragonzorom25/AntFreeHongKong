@@ -4,7 +4,8 @@ import com.afhk.app.entity.NewsIntegratedEntity;
 import com.afhk.app.repository.NewsIntegratedRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -16,7 +17,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -26,20 +26,14 @@ import java.util.stream.Collectors;
 @Service
 public class NewsRssTypeAService {
 
+    private static final Logger log = LoggerFactory.getLogger(NewsRssTypeAService.class);
     private final NewsIntegratedRepository repository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper(); 
-    
-    // 🚩 화면 표시용 날짜 포맷 (통일)
     private final DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Value("${python.stock.json.path}")
     private String script_json_path;
-
-    @Autowired
-    public NewsRssTypeAService(NewsIntegratedRepository repository) {
-        this.repository = repository;
-    }
 
     private final List<Map<String, String>> RSS_SOURCES = Arrays.asList(
         Map.of("name", "연합뉴스", "url", "https://www.yonhapnewstv.co.kr/browse/feed/"),
@@ -61,113 +55,41 @@ public class NewsRssTypeAService {
         "신기술", "상용화", "국산화", "최초", "IPO", "상장", "액면분할", "무상증자", "배당", "특징주"
     );
 
-    /** ✅ 종목 마스터 로드 (script_json_path 사용) */
-    private List<String> getStockMasterFromJson() {
-        try {
-            // 🚩 하드코딩 로직 제거 및 주입된 경로 사용
-            File jsonFile = new File(script_json_path);
-            
-            if (!jsonFile.exists()) {
-                System.out.println("⚠️ [RSS] 종목 리스트 파일을 찾을 수 없습니다: " + script_json_path);
-                return new ArrayList<>();
-            }
-
-            JsonNode root = objectMapper.readTree(jsonFile);
-            List<String> stockList = new ArrayList<>();
-            if (root.isArray()) {
-                for (JsonNode node : root) {
-                    if (node.has("Name")) {
-                        String name = node.get("Name").asText().trim();
-                        if (!name.isEmpty()) stockList.add(name);
-                    }
-                }
-            }
-            stockList.sort((a, b) -> Integer.compare(b.length(), a.length()));
-            return stockList;
-        } catch (IOException e) { 
-            e.printStackTrace();
-            return new ArrayList<>(); 
-        }
+    @Autowired
+    public NewsRssTypeAService(NewsIntegratedRepository repository) {
+        this.repository = repository;
     }
 
-    /** ✅ 종목 코드로 찾기 (script_json_path 사용) */
-    private String findStockCodeByName(String stockName) {
-        if (stockName == null || stockName.isEmpty()) return "";
-        try {
-            File jsonFile = new File(script_json_path);
-            if (!jsonFile.exists()) return "";
-
-            JsonNode root = objectMapper.readTree(jsonFile);
-            if (root.isArray()) {
-                String targetName = stockName.replace(" ", "").toUpperCase();
-                for (JsonNode node : root) {
-                    if (node.has("Name") && node.has("Code")) {
-                        String jsonName = node.get("Name").asText().replace(" ", "").toUpperCase();
-                        if (jsonName.equals(targetName)) {
-                            return node.get("Code").asText().trim();
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) { return ""; }
-        return "";
-    }
-
-    /** ✅ 종목명 추출 (추출 로직 고도화 적용) */
-    private String extractStockName(String title, List<String> stockMaster) {
-        if (title == null || title.isEmpty() || stockMaster == null || stockMaster.isEmpty()) return "";
-        
-        // 특수문자 제거 후 매칭률 향상
-        String cleanTitle = title.replaceAll("[^가-힣a-zA-Z0-9]", "").toUpperCase();
-        
-        for (String stock : stockMaster) {
-            String originStock = stock.toUpperCase().replace(" ", "");
-            if (cleanTitle.contains(originStock)) return stock;
-            
-            if (originStock.length() >= 4) {
-                String head = originStock.substring(0, 2);
-                String tail = originStock.substring(2);
-                if (cleanTitle.contains(head + tail.substring(0, Math.min(2, tail.length()))) || 
-                    (tail.length() >= 2 && cleanTitle.contains(tail))) {
-                    return stock;
-                }
-            }
-        }
-        return "";
-    }
-
-    private String calculateServerStatus(LocalDateTime rawDate) {
-        if (rawDate == null) return "-";
-        LocalDateTime now = LocalDateTime.now();
-        long daysBetween = ChronoUnit.DAYS.between(rawDate.toLocalDate(), now.toLocalDate());
-        return (daysBetween == 0) ? "오늘" : daysBetween + "일 전";
-    }
-
-    /** ✅ 리스트 조회 */
+    /** ✅ [화면 조회] 오직 DB 데이터만 리턴 (속도 최우선) */
     public Map<String, Object> getList(int page, int size, String search, String mode, boolean pagination) {
-        repository.deleteByRawDateBefore(LocalDateTime.now().minusDays(3));
-        collectRssNews();
+        try {
+            repository.deleteByRawDateBefore(LocalDateTime.now().minusDays(3));
+        } catch (Exception e) {
+            log.error("🧹 RSS 데이터 삭제 중 에러: {}", e.getMessage());
+        }
 
-        List<NewsIntegratedEntity> entities = repository.findByNewsType("RSS", Sort.by(Sort.Direction.DESC, "rawDate"));
-        List<Map<String, Object>> filtered = entities.stream()
-            .map(this::convertToMap)
-            .filter(item -> {
-                if (search == null || search.isEmpty()) return true;
-                String s = search.toLowerCase();
-                return safeStr(item.get("title")).toLowerCase().contains(s) || 
-                       safeStr(item.get("stockName")).toLowerCase().contains(s) ||
-                       safeStr(item.get("stockCode")).toLowerCase().contains(s);
-            })
-            .collect(Collectors.toCollection(ArrayList::new));
+        List<NewsIntegratedEntity> entities;
+        Sort sort = Sort.by(Sort.Direction.DESC, "rawDate");
 
-        return applyPagination(filtered, page, size, mode, pagination);
+        if (search != null && !search.trim().isEmpty() && !search.equals("1")) {
+            entities = repository.findByNewsTypeAndTitleContainingIgnoreCaseOrNewsTypeAndStockNameContainingIgnoreCase(
+                    "RSS", search, "RSS", search, sort);
+        } else {
+            entities = repository.findByNewsType("RSS", sort);
+        }
+
+        List<Map<String, Object>> content = entities.stream()
+                .map(this::convertToMap)
+                .collect(Collectors.toList());
+
+        return applyPagination(content, page, size, mode, pagination);
     }
 
-    private String safeStr(Object obj) { return obj == null ? "" : obj.toString(); }
-
-    /** ✅ RSS 수집 및 저장 */
-    private void collectRssNews() {
+    /** ✅ [수집 전용] 스케줄러가 호출할 메서드 */
+    public void collectAndSaveAll() {
+        log.info("🚀 RSS 통합 뉴스 수집 엔진 가동...");
         List<String> stockMaster = getStockMasterFromJson();
+        
         for (Map<String, String> source : RSS_SOURCES) {
             try {
                 HttpHeaders headers = new HttpHeaders();
@@ -179,37 +101,85 @@ public class NewsRssTypeAService {
                 Document doc = builder.parse(new ByteArrayInputStream(response.getBody()));
                 NodeList items = doc.getElementsByTagName("item");
 
+                int savedCount = 0;
                 for (int i = 0; i < items.getLength(); i++) {
                     Element item = (Element) items.item(i);
                     String title = getTagValue("title", item);
                     String link = getTagValue("link", item);
                     String matchedKeyword = findMatchedKeyword(title);
 
-                    if (!repository.existsByLink(link) && !repository.existsByTitle(title)) {
-                        String stockName = extractStockName(title, stockMaster);
-                        
-                        if (!stockName.isEmpty() || matchedKeyword != null) {
-                            String stockCode = (!stockName.isEmpty()) ? findStockCodeByName(stockName) : "";
-                            String feature = (matchedKeyword != null) ? matchedKeyword : "정보";
-                            String finalStockName = (!stockName.isEmpty()) ? stockName : source.get("name");
-                            
-                            LocalDateTime now = LocalDateTime.now();
+                    // 🚩 [중복 방어] 링크 또는 제목이 이미 있으면 저장하지 않고 즉시 스킵 (서버 재기동 시 데이터 중복 방지)
+                    if (repository.existsByLink(link) || repository.existsByTitle(title)) {
+                        continue;
+                    }
 
-                            repository.save(new NewsIntegratedEntity(
-                                stockCode, 
-                                finalStockName, 
-                                title, 
-                                link, 
-                                now, 
-                                feature, 
-                                calculateServerStatus(now), 
-                                "RSS"
-                            ));
-                        }
+                    String stockName = extractStockName(title, stockMaster);
+                    
+                    // 종목명이 있거나 핵심 키워드가 포함된 경우만 저장
+                    if (!stockName.isEmpty() || matchedKeyword != null) {
+                        String stockCode = (!stockName.isEmpty()) ? findStockCodeByName(stockName) : "";
+                        String finalStockName = (!stockName.isEmpty()) ? stockName : source.get("name");
+                        LocalDateTime now = LocalDateTime.now();
+
+                        repository.save(new NewsIntegratedEntity(
+                            stockCode, finalStockName, title, link, now, 
+                            (matchedKeyword != null ? matchedKeyword : "정보"), 
+                            calculateServerStatus(now), "RSS"
+                        ));
+                        savedCount++;
                     }
                 }
-            } catch (Exception ignored) {}
+                if(savedCount > 0) log.info("💡 [{}] RSS 새 뉴스 {}건 저장", source.get("name"), savedCount);
+            } catch (Exception e) {
+                log.error("⚠️ [{}] RSS 수집 중 에러: {}", source.get("name"), e.getMessage());
+            }
         }
+        log.info("✅ RSS 통합 뉴스 수집 완료");
+    }
+
+    private List<String> getStockMasterFromJson() {
+        try {
+            File jsonFile = new File(script_json_path);
+            if (!jsonFile.exists()) return new ArrayList<>();
+            JsonNode root = objectMapper.readTree(jsonFile);
+            List<String> stockList = new ArrayList<>();
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    if (node.has("Name")) stockList.add(node.get("Name").asText().trim());
+                }
+            }
+            stockList.sort((a, b) -> Integer.compare(b.length(), a.length()));
+            return stockList;
+        } catch (Exception e) { return new ArrayList<>(); }
+    }
+
+    private String findStockCodeByName(String stockName) {
+        if (stockName == null || stockName.isEmpty()) return "";
+        try {
+            JsonNode root = objectMapper.readTree(new File(script_json_path));
+            String target = stockName.replace(" ", "").toUpperCase();
+            for (JsonNode node : root) {
+                if (node.get("Name").asText().replace(" ", "").equalsIgnoreCase(target)) {
+                    return node.get("Code").asText().trim();
+                }
+            }
+        } catch (Exception e) { }
+        return "";
+    }
+
+    private String extractStockName(String title, List<String> stockMaster) {
+        if (title == null || stockMaster == null) return "";
+        String cleanTitle = title.replaceAll("[^가-힣a-zA-Z0-9]", "").toUpperCase();
+        for (String stock : stockMaster) {
+            if (cleanTitle.contains(stock.toUpperCase().replace(" ", ""))) return stock;
+        }
+        return "";
+    }
+
+    private String calculateServerStatus(LocalDateTime rawDate) {
+        if (rawDate == null) return "-";
+        long days = ChronoUnit.DAYS.between(rawDate.toLocalDate(), LocalDateTime.now().toLocalDate());
+        return (days == 0) ? "오늘" : days + "일 전";
     }
 
     private String findMatchedKeyword(String title) {
@@ -225,19 +195,14 @@ public class NewsRssTypeAService {
         return "";
     }
 
-    /** ✅ Map 변환: rawDate 포맷팅 및 regDate 키 추가 */
     private Map<String, Object> convertToMap(NewsIntegratedEntity entity) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", entity.getId());
         map.put("title", entity.getTitle());
         map.put("link", entity.getLink());
         map.put("stockName", entity.getStockName());
-        map.put("stockCode", entity.getStockCode()); 
-        
-        String formattedDate = entity.getRawDate().format(displayFormatter);
-        map.put("regDate", formattedDate);
-        map.put("rawDate", formattedDate);
-        
+        map.put("stockCode", entity.getStockCode());
+        map.put("regDate", entity.getRawDate().format(displayFormatter));
         map.put("serverStatus", calculateServerStatus(entity.getRawDate()));
         map.put("featureOption", entity.getFeatureOption());
         return map;
@@ -251,9 +216,9 @@ public class NewsRssTypeAService {
             result.put("totalElements", total);
             return result;
         }
-        int start = page * size;
+        int start = Math.min(page * size, total);
         int end = Math.min(start + size, total);
-        result.put("content", (start >= total) ? new ArrayList<>() : list.subList(start, end));
+        result.put("content", list.subList(start, end));
         result.put("totalElements", total);
         result.put("totalPages", (int) Math.ceil((double) total / size));
         return result;

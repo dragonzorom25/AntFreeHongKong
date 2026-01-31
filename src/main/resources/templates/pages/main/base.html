@@ -1,235 +1,116 @@
 <!DOCTYPE html>
-<html lang="ko"
-      xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layout/default_layout}">
-
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default_layout}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>System Dashboard - Exchange Rates</title>
-  <!-- FontAwesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
   <style>
-    /* 기본 레이아웃 및 컨테이너 */
-    body {
-      margin: 0;
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-      background-color: #f8fafc;
+    body { margin: 0; font-family: 'Pretendard', sans-serif; background-color: #f1f5f9; }
+    .content-container { width: 100%; padding: 15px; box-sizing: border-box; }
+    /* ✅ 전광판은 그리드 형태로 꽉 차게 */
+    .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 10px; }
+    .news-item {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;
+      display: flex; align-items: center; cursor: pointer; height: 48px; box-sizing: border-box;
+      transition: transform 0.1s;
     }
+    .news-item:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    .news-item.golden { border-left: 4px solid #ef4444; background-color: #fff1f2; }
+    .news-item.golden .news-title { color: #b91c1c; font-weight: 800; }
+    .news-badge { background: #3b82f6; color: white; font-size: 0.7rem; font-weight: 800; min-width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-right: 10px; }
+    .ofer-tag { background: #f1f5f9; color: #64748b; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; margin-right: 8px; border: 1px solid #e2e8f0; }
+    .news-title { font-size: 0.85rem; font-weight: 500; color: #334155; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .news-time { font-size: 0.7rem; color: #94a3b8; margin-left: 8px; font-variant-numeric: tabular-nums; }
 
-    .content-container {
-      width: 100%;
-      max-width: 100%; /* 너비 꽉 차게 변경 */
-      margin: 0 auto;
-      padding: 0 20px;
-      box-sizing: border-box;
-    }
-
-    /* 대시보드 카드 그리드 */
-    .dashboard-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-
-    .card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 16px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-
-    .card-header {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #64748b;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .card-value {
-      display: block;
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: #0f172a;
-      margin-bottom: 4px;
-    }
-
-    .card-desc {
-      font-size: 0.75rem;
-      color: #94a3b8;
-      margin: 0;
-    }
-
-    /* 테이블 섹션 - 화면 꽉 차게 */
-    .table-section-title {
-      width: 100%;
-      margin-bottom: 12px; 
-      font-weight: 800; 
-      color: #1e293b; 
-      font-size: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .table-container {
-      width: 100%;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow: hidden; /* 스크롤 방지 */
-      margin-bottom: 80px; /* 하단 바 여백 */
-    }
-
-    .dashboard-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed; /* 셀 너비 고정하여 스크롤 방지 */
-    }
-
-    .dashboard-table th, .dashboard-table td {
-      padding: 12px 10px;
-      text-align: center;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.85rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .dashboard-table th {
-      background: #f8fafc;
-      font-weight: 700;
-      color: #475569;
-      border-bottom: 2px solid #e2e8f0;
-    }
-
-    .dashboard-table tr:hover {
-      background-color: #fcfcfd;
-    }
-
-    /* 하단 고정 정보 바 - 최소화 버전 */
-    .info-bar-fixed {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #0f172a;
-      border-top: 2px solid #3b82f6;
-      z-index: 1000;
-      padding: 6px 0; /* 높이 축소 */
-    }
-
-    /* 모바일 대응 */
-    @media (max-width: 640px) {
-      .dashboard-table th, .dashboard-table td {
-        padding: 8px 4px;
-        font-size: 0.75rem;
-      }
-      .card-value { font-size: 1.2rem; }
-    }
+    /* ✅ 실시간 RUNNING 깜빡이 스타일 */
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .running-status { display: flex; align-items: center; gap: 6px; font-weight: 800; color: #3b82f6; font-size: 0.75rem; animation: blink 1.5s infinite; letter-spacing: 0.5px; }
+    .status-dot { width: 8px; height: 8px; background-color: #3b82f6; border-radius: 50%; box-shadow: 0 0 5px #3b82f6; }
+    .running-status.error { color: #ef4444; animation: none; }
+    .running-status.error .status-dot { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; }
   </style>
 </head>
-
 <body>
 <div layout:fragment="content">
   <div class="content-container">
-    
-    <!-- 페이지 헤더 -->
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
-      <h2 style="margin:0; font-size: 1.3rem; font-weight: 800; color: #0f172a;">📊 종합 정보 보드</h2>
-      <div style="font-size: 0.75rem; color: #64748b;">
-        Update: <span th:text="${#calendars.format(#calendars.createNow(), 'HH:mm:ss')}">14:30:12</span>
+    <div style="display:flex; align-items:center; margin-bottom:15px;">
+      <b style="font-size:1.2rem; letter-spacing: -0.5px;">🐜 실시간 KIS 뉴스 전광판</b>
+      
+      <div style="margin-left:auto; display:flex; flex-direction:column; align-items:flex-end;">
+        <div id="status-container" class="running-status">
+          <div id="status-dot" class="status-dot"></div>
+          <span id="status-text">SYSTEM RUNNING</span>
+        </div>
+        <span id="header-time" style="font-size:0.65rem; color:#64748b; margin-top:2px; font-family: monospace;">CONNECTING...</span>
       </div>
     </div>
 
-    <!-- 상단 시스템 상태 카드 (원본 유지) -->
-    <div class="dashboard-cards">
-      <div class="card">
-        <div class="card-header"><i class="fas fa-server"></i> 서버 상태</div>
-        <span class="card-value">12대 가동 중</span>
-        <p class="card-desc">전체 14대 중 2대 점검</p>
-      </div>
-      <div class="card">
-        <div class="card-header"><i class="fas fa-users"></i> 사용자 활동</div>
-        <span class="card-value">34명</span>
-        <p class="card-desc">최근 1시간 활성</p>
-      </div>
-      <div class="card">
-        <div class="card-header"><i class="fas fa-database"></i> DB 상태</div>
-        <span class="card-value">정상 (100%)</span>
-        <p class="card-desc">백업: 04:00 AM</p>
-      </div>
-      <div class="card">
-        <div class="card-header"><i class="fas fa-bell"></i> 알림</div>
-        <span class="card-value">3건 대기</span>
-        <p class="card-desc">긴급 1건 포함</p>
-      </div>
-    </div>
-
-    <!-- 환율 정보 테이블 (원본 유지) -->
-    <div class="table-section-title">
-      <i class="fas fa-comments-dollar"></i> 실시간 주요 환율 시세
-    </div>
-    <div class="table-container">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>통화명</th>
-            <th>매매기준율</th>
-            <th>전일대비</th>
-            <th>등락률</th>
-            <th>현찰 살 때</th>
-            <th>송금 보낼 때</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>USD (미국 달러)</strong></td>
-            <td>1,342.50</td>
-            <td><span class="val-up">▲ 2.50</span></td>
-            <td><span class="val-up">+0.19%</span></td>
-            <td>1,366.01</td>
-            <td>1,355.60</td>
-          </tr>
-          <tr>
-            <td><strong>JPY (일본 100엔)</strong></td>
-            <td>892.45</td>
-            <td><span class="val-down">▼ 1.12</span></td>
-            <td><span class="val-down">-0.13%</span></td>
-            <td>908.11</td>
-            <td>901.19</td>
-          </tr>
-          <tr>
-            <td><strong>EUR (유럽 연합)</strong></td>
-            <td>1,452.12</td>
-            <td><span class="val-up">▲ 0.45</span></td>
-            <td><span class="val-up">+0.03%</span></td>
-            <td>1,481.16</td>
-            <td>1,466.64</td>
-          </tr>
-          <tr>
-            <td><strong>CNY (중국 위안)</strong></td>
-            <td>185.34</td>
-            <td><span class="val-down">▼ 0.05</span></td>
-            <td><span class="val-down">-0.03%</span></td>
-            <td>194.60</td>
-            <td>187.19</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <div id="news-list" class="news-grid"></div>
   </div>
 
+<th:block layout:fragment="pageScript">
+<script>
+  let lastFingerprint = "";
 
+  // 🚩 서버가 준 link(구글URL)를 그대로 여는 함수
+  function openNews(url) {
+      if (url && url.startsWith('http')) {
+          window.open(url, '_blank');
+      }
+  }
+
+  function refreshData() {
+      fetch('/api/newsKisTypeAList?mode=dashboard')
+      .then(res => res.json())
+      .then(data => {
+          document.getElementById('status-container').classList.remove('error');
+          document.getElementById('status-text').innerText = "SYSTEM RUNNING";
+
+          if (data.content && data.content.length > 0) {
+              const newsList = data.content; 
+              const currentFingerprint = newsList.map(n => n.id + n.title).join('|');
+              
+              if(lastFingerprint !== currentFingerprint) {
+                  const html = newsList.map((news, idx) => {
+                      const isGolden = news.featureOption === 'GOLDEN' || (news.title && news.title.includes('특징주'));
+                      const goldenClass = isGolden ? 'golden' : '';
+                      
+                      let displayTime = "";
+                      if(news.regDate && news.regDate.length >= 16) {
+                          displayTime = news.regDate.substring(11, 16);
+                      }
+
+                      // 🚩 링크에 따옴표가 섞여서 JS가 깨지는 것만 방지
+                      const safeLink = news.link ? news.link.replace(/'/g, "\\'") : "";
+
+                      return `
+                          <div class="news-item ${goldenClass}" 
+                               onclick="openNews('${safeLink}')">
+                              <span class="news-badge">${idx + 1}</span>
+                              <span class="ofer-tag">${news.stockName || 'KIS'}</span>
+                              <div class="news-title" title="${news.title}">${news.title}</div>
+                              <div class="news-time">${displayTime}</div>
+                          </div>
+                      `;
+                  }).join('');
+                  
+                  document.getElementById('news-list').innerHTML = html;
+                  lastFingerprint = currentFingerprint;
+              }
+          }
+          
+          const now = new Date();
+          document.getElementById('header-time').innerText = "LAST UPDATE: " + now.toLocaleTimeString('ko-KR', { hour12: false });
+
+      }).catch(err => {
+          console.error("데이터 수집 에러:", err);
+          document.getElementById('status-container').classList.add('error');
+          document.getElementById('status-text').innerText = "SYSTEM ERROR";
+      });
+  }
+  
+  refreshData(); 
+  setInterval(refreshData, 5000); 
+</script>
+</th:block>
 </div>
-
 </body>
 </html>

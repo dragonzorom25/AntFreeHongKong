@@ -19,7 +19,7 @@ public class AdminInitializer {
     public CommandLineRunner initAdminUser(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
             // 사용자 엔티티를 찾을 경로와 이름은 고객님의 프로젝트에 맞게 수정해 주세요.
-            // 예를 들어, 'com.mybaselinkV2.app.repository.UserRepository' 경로를 사용했다고 가정합니다.
+            // 예를 들어, 'com.afhk.app.repository.UserRepository' 경로를 사용했다고 가정합니다.
 
             // 1. 이미 'admin' 계정이 존재하는지 확인
             if (userRepository.findByUsername("admin").isEmpty()) {

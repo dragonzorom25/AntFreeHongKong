@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Security (한국투자증권 API Key 보호) ###
+src/main/resources/application.yml
+src/main/resources/application-local.yml
+src/main/resources/application-local-db.yml
+src/main/resources/application-prod.yml
+src/main/resources/application-prod-db.yml

@@ -1,8 +1,8 @@
 package com.afhk.app.controller;
 
-import org.springframework.web.bind.annotation.*;
-
 import com.afhk.app.service.NewsDartTypeAService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -12,21 +12,22 @@ public class NewsDartTypeAApiController {
 
     private final NewsDartTypeAService service;
 
+    // ✅ 생성자 주입을 더 명확하게 (Autowired 명시)
+    @Autowired
     public NewsDartTypeAApiController(NewsDartTypeAService service) {
         this.service = service;
     }
 
-    /** 🔍 DART 공시 리스트 조회 (5개 인자 버전) */
+    /** 🔍 DART 공시 리스트 조회 */
     @GetMapping
     public Map<String, Object> getList(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "15") int size,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "server") String mode,       // mode 추가
-            @RequestParam(defaultValue = "true") boolean pagination  // pagination 추가
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "15") int size,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "mode", defaultValue = "server") String mode,
+            @RequestParam(name = "pagination", defaultValue = "true") boolean pagination
     ) {
-        // 🚩 서비스의 getList(int, int, String, String, boolean)에 맞춰 5개 다 던집니다!
+        // ✅ 서비스에 정의된 getList(int, int, String, String, boolean) 호출
         return service.getList(page, size, search, mode, pagination);
     }
-    
 }

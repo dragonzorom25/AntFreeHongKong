@@ -1,4 +1,4 @@
-package com.mybaselinkV2.app;
+package com.afhk.app;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 

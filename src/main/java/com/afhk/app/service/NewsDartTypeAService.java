@@ -1,17 +1,22 @@
 package com.afhk.app.service;
 
+import com.afhk.app.entity.NewsIntegratedEntity;
+import com.afhk.app.repository.NewsIntegratedRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.afhk.app.entity.NewsIntegratedEntity;
-import com.afhk.app.repository.NewsIntegratedRepository;
-
+import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -23,14 +28,20 @@ import java.util.stream.Collectors;
 @Service
 public class NewsDartTypeAService {
 
+    private static final Logger log = LoggerFactory.getLogger(NewsDartTypeAService.class);
+
     @Autowired
     private NewsIntegratedRepository repository; 
 
-    private final String API_KEY = "599b24c052bb23453a48da3916ae7faf1befd03e";
+    @Value("${opendart.dart_api_key:}")
+    private String API_KEY;
+
+    @Value("${python.stock.json.path:}")
+    private String script_json_path;
+
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> profitStatusCache = new ConcurrentHashMap<>();
-    
-    // 🚩 화면에 표시할 날짜 포맷 (너무 길지 않게 세팅)
     private final DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final List<String> GOOD_KEYWORDS = Arrays.asList(
@@ -38,11 +49,17 @@ public class NewsDartTypeAService {
             "영업이익증가", "무상증자", "자사주소각", "자사주취득", "인수", "합병", "단일판매"
     );
 
-    /** ✅ 리스트 조회 (포맷팅 적용) */
+    /** ✅ 1. 리스트 조회 (정상 운영 모드) */
     @Transactional
     public Map<String, Object> getList(int page, int size, String search, String mode, boolean pagination) {
+        try {
+            // 3일 지난 데이터 청소
+            repository.deleteByRawDateBefore(LocalDateTime.now().minusDays(3));
+        } catch (Exception e) {
+            log.error("🧹 DART 청소 에러: {}", e.getMessage());
+        }
         
-        repository.deleteByRawDateBefore(LocalDateTime.now().minusDays(3));
+        // 실시간 수집 호출
         collectAndSave();
 
         List<NewsIntegratedEntity> entities = repository.findByNewsType("DART", Sort.by(Sort.Direction.DESC, "rawDate"));
@@ -51,133 +68,113 @@ public class NewsDartTypeAService {
             .filter(e -> {
                 if (search == null || search.trim().isEmpty() || "1".equals(search)) return true;
                 if ("3".equals(search)) return GOOD_KEYWORDS.stream().anyMatch(k -> e.getTitle().contains(k));
-                
                 String s = search.toLowerCase();
                 return e.getTitle().toLowerCase().contains(s) || 
-                       (e.getStockName() != null && e.getStockName().toLowerCase().contains(s)) || 
-                       (e.getStockCode() != null && e.getStockCode().toLowerCase().contains(s));
+                       (e.getStockName() != null && e.getStockName().toLowerCase().contains(s));
             })
-            .map(e -> {
-                Map<String, Object> item = new HashMap<>();
-                item.put("id", e.getId());
-                item.put("stockCode", e.getStockCode()); 
-                item.put("stockName", e.getStockName());
-                item.put("title", e.getTitle());
-                
-                // 🚩 핵심: 너무 긴 포맷 대신 깔끔하게 문자열로 변환해서 전달
-                String formattedDate = e.getRawDate().format(displayFormatter);
-                item.put("regDate", formattedDate); 
-                item.put("rawDate", formattedDate); 
-                
-                item.put("serverStatus", e.getServerStatus());   
-                item.put("featureOption", e.getFeatureOption()); 
-                item.put("link", e.getLink());
-                item.put("newsType", e.getNewsType());
-                return item;
-            })
+            .map(this::convertToMap)
             .collect(Collectors.toList());
 
-        Map<String, Object> result = new HashMap<>();
-        int totalElements = filtered.size();
-        
-        if (!pagination || "client".equalsIgnoreCase(mode)) {
-            result.put("content", filtered);
-            result.put("totalElements", totalElements);
-            return result;
-        }
-
-        int start = page * size;
-        int end = Math.min(start + size, totalElements);
-        result.put("content", (start >= totalElements) ? new ArrayList<>() : filtered.subList(start, end));
-        result.put("totalElements", totalElements);
-        result.put("totalPages", (int) Math.ceil((double) totalElements / size));
-        return result;
+        return applyPagination(filtered, page, size, mode, pagination);
     }
 
-    /** ✅ 데이터 수집 및 통합 테이블 저장 */
-    private void collectAndSave() {
+    /** ✅ 2. 데이터 수집 핵심 엔진 (실시간 날짜 적용) */
+    public void collectAndSave() {
         LocalDate targetLocalDate = LocalDate.now();
-        if (LocalTime.now().isBefore(LocalTime.of(7, 30))) targetLocalDate = targetLocalDate.minusDays(1);
+        
+        // 오전 7시 30분 이전이면 전날 데이터부터 훑기
+        if (LocalTime.now().isBefore(LocalTime.of(7, 30))) {
+            targetLocalDate = targetLocalDate.minusDays(1);
+        }
+        
         String targetDate = targetLocalDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        int pageNo = 1;
 
         try {
-            String url = "https://opendart.fss.or.kr/api/list.json";
-            String targetUrl = UriComponentsBuilder.fromUriString(url) 
-                    .queryParam("crtfc_key", API_KEY)
-                    .queryParam("bgnde", targetDate)
-                    .queryParam("endde", targetDate)
-                    .queryParam("page_count", "100")
-                    .toUriString();
+            while (true) {
+                String targetUrl = UriComponentsBuilder.fromUriString("https://opendart.fss.or.kr/api/list.json") 
+                        .queryParam("crtfc_key", API_KEY)
+                        .queryParam("bgnde", targetDate)
+                        .queryParam("endde", targetDate)
+                        .queryParam("page_no", pageNo)
+                        .queryParam("page_count", "100").toUriString();
 
-            String response = restTemplate.getForObject(targetUrl, String.class);
-            if (response == null) return;
+                String response = restTemplate.getForObject(targetUrl, String.class);
+                if (response == null) break;
 
-            JSONObject json = new JSONObject(response);
-            if ("000".equals(json.optString("status"))) {
+                JSONObject json = new JSONObject(response);
+                if (!"000".equals(json.optString("status"))) break;
+
                 JSONArray list = json.getJSONArray("list");
+                if (list.length() == 0) break;
+
                 for (int i = 0; i < list.length(); i++) {
                     JSONObject obj = list.getJSONObject(i);
                     String corpCls = obj.optString("corp_cls");
                     if (!Arrays.asList("Y", "K", "N").contains(corpCls)) continue;
 
-                    String link = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=" + obj.optString("rcept_no");
-                    if (repository.existsByLink(link)) continue;
+                    String rcpNo = obj.optString("rcept_no");
+                    String link = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=" + rcpNo;
+                    String title = obj.optString("report_nm");
+
+                    // 🚩 [중복 방어] 링크(접수번호)가 이미 있거나, 제목이 완전히 똑같으면 스킵!
+                    if (repository.existsByLink(link) || repository.existsByTitle(title)) {
+                        continue;
+                    }
 
                     String corpCode = obj.optString("corp_code");
                     String stockCode = obj.optString("stock_code");
                     String corpName = obj.optString("corp_name");
 
-                    String feature = profitStatusCache.computeIfAbsent(corpCode, this::getProfitStatusFromDart);
+                    // 종목코드 매칭
+                    if (stockCode == null || "null".equals(stockCode) || stockCode.isEmpty()) {
+                        stockCode = findStockCodeFromJson(corpName);
+                    }
 
-                    // 🚩 DB 저장 시엔 LocalDateTime.now()로 정밀하게 저장
+                    String feature = "[재무미확인]";
+                    if (GOOD_KEYWORDS.stream().anyMatch(title::contains)) {
+                        feature = profitStatusCache.computeIfAbsent(corpCode, this::getProfitStatusFromDart);
+                    }
+
                     repository.save(new NewsIntegratedEntity(
-                            stockCode, 
-                            corpName,           
-                            obj.optString("report_nm"), 
-                            link, 
-                            LocalDateTime.now(), 
-                            feature,             
-                            getMarketName(corpCls), 
-                            "DART"               
+                            stockCode, corpName, title, link, LocalDateTime.now(), 
+                            feature, getMarketName(corpCls), "DART"
                     ));
                 }
+                if (list.length() < 100) break;
+                pageNo++;
+                Thread.sleep(200); // API 부하 방지
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception e) { log.error("🚨 DART 수집 에러: {}", e.getMessage()); }
+    }
+
+    private String findStockCodeFromJson(String corpName) {
+        try {
+            File file = new File(script_json_path);
+            if (!file.exists()) return "";
+            JsonNode root = objectMapper.readTree(file);
+            for (JsonNode node : root) {
+                if (node.get("Name").asText().replace(" ","").equalsIgnoreCase(corpName.replace(" ",""))) {
+                    return node.get("Code").asText().trim();
+                }
+            }
+        } catch (Exception e) {}
+        return "";
     }
 
     private String getProfitStatusFromDart(String corpCode) {
         String url = "https://opendart.fss.or.kr/api/fnlttSinglAcnt.json";
         String currentYear = String.valueOf(LocalDate.now().getYear());
-        String lastYear = String.valueOf(LocalDate.now().getYear() - 1);
-        String[] years = {currentYear, lastYear};
+        String[] years = {currentYear, String.valueOf(Integer.parseInt(currentYear)-1)};
         String[][] reports = {{"11014", "3분기"}, {"11012", "반기"}, {"11013", "1분기"}, {"11011", "결산"}};
-
-        for (String year : years) {
+        for (String y : years) {
             for (String[] r : reports) {
                 try {
-                    String targetUrl = UriComponentsBuilder.fromUriString(url) 
-                            .queryParam("crtfc_key", API_KEY)
-                            .queryParam("corp_code", corpCode)
-                            .queryParam("bsns_year", year)
-                            .queryParam("reprt_code", r[0])
-                            .toUriString();
-
-                    String response = restTemplate.getForObject(targetUrl, String.class);
-                    if (response == null) continue;
-                    JSONObject json = new JSONObject(response);
+                    String tUrl = UriComponentsBuilder.fromUriString(url).queryParam("crtfc_key", API_KEY)
+                        .queryParam("corp_code", corpCode).queryParam("bsns_year", y).queryParam("reprt_code", r[0]).toUriString();
+                    JSONObject json = new JSONObject(restTemplate.getForObject(tUrl, String.class));
                     if ("000".equals(json.optString("status")) && json.has("list")) {
-                        JSONArray list = json.getJSONArray("list");
-                        for (int i = 0; i < list.length(); i++) {
-                            JSONObject item = list.getJSONObject(i);
-                            if (item.optString("account_nm").contains("영업이익")) {
-                                String valStr = item.optString("thstrm_amount").replace(",", "");
-                                if (!valStr.isEmpty() && !valStr.equals("-")) {
-                                    return (Long.parseLong(valStr) > 0 ? "[흑자]" : "[적자]") + " ("+year+" "+r[1]+")";
-                                }
-                            }
-                        }
+                        return (Long.parseLong(json.getJSONArray("list").getJSONObject(0).optString("thstrm_amount").replace(",","")) > 0 ? "[흑자]" : "[적자]") + " ("+y+" "+r[1]+")";
                     }
                 } catch (Exception e) {}
             }
@@ -186,9 +183,30 @@ public class NewsDartTypeAService {
     }
 
     private String getMarketName(String cls) {
-        if ("Y".equals(cls)) return "코스피";
-        if ("K".equals(cls)) return "코스닥";
-        if ("N".equals(cls)) return "코넥스";
-        return "기타";
+        return "Y".equals(cls) ? "코스피" : ("K".equals(cls) ? "코스닥" : ("N".equals(cls) ? "코넥스" : "기타"));
+    }
+
+    private Map<String, Object> convertToMap(NewsIntegratedEntity e) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", e.getId()); m.put("stockCode", e.getStockCode());
+        m.put("stockName", e.getStockName()); m.put("title", e.getTitle());
+        m.put("regDate", e.getRawDate().format(displayFormatter));
+        m.put("featureOption", e.getFeatureOption()); m.put("link", e.getLink());
+        m.put("newsType", e.getNewsType());
+        return m;
+    }
+
+    private Map<String, Object> applyPagination(List<Map<String, Object>> list, int page, int size, String mode, boolean pagination) {
+        Map<String, Object> res = new HashMap<>();
+        int total = list.size();
+        if (!pagination || "client".equalsIgnoreCase(mode)) {
+            res.put("content", list); res.put("totalElements", total); return res;
+        }
+        int start = Math.min(page * size, total);
+        int end = Math.min(start + size, total);
+        res.put("content", list.subList(start, end));
+        res.put("totalElements", total);
+        res.put("totalPages", (int) Math.ceil((double) total / size));
+        return res;
     }
 }

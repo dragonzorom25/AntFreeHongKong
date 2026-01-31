@@ -15,12 +15,16 @@ spring:
       # 3. 운영 서버 세트 (운영 설정 + 운영 DB)
       "prod": "prod,prod-db"
 
+  task:
+    scheduling:
+      pool:
+        size: 5
 
   #########################################################################
   # ✅ 애플리케이션 정보
   #########################################################################
   application:
-    name: MyBaseLinkV2
+    name: AntFreeHongKong
 
   #########################################################################
   # ✅ UI 템플릿 엔진(Thymeleaf)
@@ -47,6 +51,7 @@ spring:
       enabled: true
       max-file-size: 10MB
       max-request-size: 20MB
+
 
   #########################################################################
   # ✅ DevTools 자동 리로드 설정 (단일 문자열 포맷으로 최종 수정)
@@ -114,3 +119,14 @@ logging:
 ###########################################################################
 opendart:
   dart_api_key: 599b24c052bb23453a48da3916ae7faf1befd03e
+
+# 한국투자증권 실전 API 설정
+kis:
+  api:
+    # 실전: https://openapi.koreainvestment.com:9443
+    # 모의: https://openapivts.koreainvestment.com:29443
+    base-url: https://openapi.koreainvestment.com:9443
+    app-key: PSni5QDPY9Y8zK1WnZ6UY8MdLAqoWqGNi3Hj
+    app-secret: kr1ctFdsxLAGAABCmUAKGuncVe1oTRi+QcdwTwp5T4i7Zm0xqUuLdkpr7KWd3AKIO2xIMCMRJaDvRFiZHcR8/D7BXXicHUW7BOU3a0Y3n/tftDRLLNod2hcYGXx12sRXm+UDmrwmrv7l+5eVdHMav8tXNXGOd7Y1au1vRW6k3R5UGXpuDiU=
+    account-no: "72223359"
+    account-prdt-cd: "01"      # 국내주식은 보통 01

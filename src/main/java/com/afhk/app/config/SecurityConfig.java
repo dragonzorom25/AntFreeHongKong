@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * ===============================================================
- * ✅ MyBaseLinkV2 - SecurityConfig (v4.3 완전 통합 안정판)
+ * ✅ AntFreeHongKong - SecurityConfig (v4.3 완전 통합 안정판)
  * ---------------------------------------------------------------
  * 🔹 JWT + AuthService + SSE 완벽 통합
  * 🔹 AccessDenied / 403 완전 해결 ( /error 경로 permitAll 추가)

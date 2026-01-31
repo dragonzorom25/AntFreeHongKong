@@ -3,19 +3,14 @@
     <div class="info-bar-content">
       <div class="info-main-scroll">
         <div class="info-group">
-          <span class="label-text">USD</span>
-          <span class="value-text" id="val-usd" th:text="${exchange != null ? exchange.USD : '1,342'}">1,342</span>
-        </div>
-        
-        <div class="info-group">
           <span class="label-text">나스닥</span>
           <span class="value-text" id="val-nasdaq">
             <th:block th:if="${stockIndices != null && stockIndices.NASDAQ != null}">
-              <span th:text="${stockIndices.NASDAQ}">16,397</span>
+              <span th:text="${stockIndices.NASDAQ}">-</span>
               <span th:class="${stockIndices.NASDAQ_TYPE == 'up' ? 'up-color' : 'down-color'}" 
                     th:text="${stockIndices.NASDAQ_TYPE == 'up' ? '▲' : '▼'}">▲</span>
             </th:block>
-            <th:block th:unless="${stockIndices != null && stockIndices.NASDAQ != null}">16,397 <span class="up-color">▲</span></th:block>
+            <th:block th:unless="${stockIndices != null && stockIndices.NASDAQ != null}">- <span class="up-color">▲</span></th:block>
           </span>
         </div>
 
@@ -23,11 +18,11 @@
           <span class="label-text">다우</span>
           <span class="value-text" id="val-dow">
             <th:block th:if="${stockIndices != null && stockIndices.DOW != null}">
-              <span th:text="${stockIndices.DOW}">38,671</span>
+              <span th:text="${stockIndices.DOW}">-</span>
               <span th:class="${stockIndices.DOW_TYPE == 'up' ? 'up-color' : 'down-color'}" 
                     th:text="${stockIndices.DOW_TYPE == 'up' ? '▲' : '▼'}">▲</span>
             </th:block>
-            <th:block th:unless="${stockIndices != null && stockIndices.DOW != null}">38,671 <span class="up-color">▲</span></th:block>
+            <th:block th:unless="${stockIndices != null && stockIndices.DOW != null}">- <span class="up-color">▲</span></th:block>
           </span>
         </div>
 
@@ -35,11 +30,11 @@
           <span class="label-text">코스피</span>
           <span class="value-text" id="val-kospi">
             <th:block th:if="${stockIndices != null && stockIndices.KOSPI != null}">
-              <span th:text="${stockIndices.KOSPI}">2,580</span>
+              <span th:text="${stockIndices.KOSPI}">-</span>
               <span th:class="${stockIndices.KOSPI_TYPE == 'up' ? 'up-color' : 'down-color'}" 
                     th:text="${stockIndices.KOSPI_TYPE == 'up' ? '▲' : '▼'}">▼</span>
             </th:block>
-            <th:block th:unless="${stockIndices != null && stockIndices.KOSPI != null}">2,580 <span class="down-color">▼</span></th:block>
+            <th:block th:unless="${stockIndices != null && stockIndices.KOSPI != null}">- <span class="down-color">▼</span></th:block>
           </span>
         </div>
 
@@ -47,11 +42,11 @@
           <span class="label-text">코스닥</span>
           <span class="value-text" id="val-kosdaq">
             <th:block th:if="${stockIndices != null && stockIndices.KOSDAQ != null}">
-              <span th:text="${stockIndices.KOSDAQ}">850</span>
+              <span th:text="${stockIndices.KOSDAQ}">-</span>
               <span th:class="${stockIndices.KOSDAQ_TYPE == 'up' ? 'up-color' : 'down-color'}" 
                     th:text="${stockIndices.KOSDAQ_TYPE == 'up' ? '▲' : '▼'}">▲</span>
             </th:block>
-            <th:block th:unless="${stockIndices != null && stockIndices.KOSDAQ != null}">850 <span class="up-color">▲</span></th:block>
+            <th:block th:unless="${stockIndices != null && stockIndices.KOSDAQ != null}">- <span class="up-color">▲</span></th:block>
           </span>
         </div>
       </div>
@@ -59,8 +54,7 @@
       <div class="info-control-group">
         <div class="info-group update-group">
           <span class="label-text"><i class="fa-regular fa-clock" style="font-size: 6px;"></i></span>
-          <span class="value-text" id="val-time" 
-                th:text="${stockIndices != null && stockIndices.updateTime != null ? stockIndices.updateTime : (exchange != null && exchange['updateTime'] != null ? exchange['updateTime'] : '실시간')}">00:00</span>
+          <span class="value-text" id="val-time" th:text="${stockIndices != null ? stockIndices.updateTime : '실시간'}">00:00</span>
         </div>
         <div class="refresh-btn" id="btn-refresh-info" title="정보 업데이트" onclick="handleExchangeRefresh(event)">
           <i id="refresh-icon" class="fa-solid fa-rotate-right"></i>
@@ -74,156 +68,107 @@
   </footer>
 
   <style>
-    /* ============================================================
-       ✅ 하단 정보 바 (Bottom Info Bar) - 높이만 키운 버전
-    ============================================================ */
     .bottom-info-bar {
       position: fixed;
       bottom: 30px; 
       left: 0;
       width: 100%;
-      height: 32px; /* 🚩 높이 대폭 확장 (18px -> 32px) */
+      height: 32px;
       background: #ffffff;
       border-top: 1px solid #e5e7eb;
       z-index: 2400;
       display: flex;
-      align-items: center; /* 내부 글자는 세로 가운데 정렬 */
+      align-items: center;
       box-shadow: 0 -1px 3px rgba(0,0,0,0.03);
     }
-
-    .info-bar-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      padding: 0 10px; 
-      gap: 5px;
-    }
-
-    .info-main-scroll {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 12px; 
-      overflow-x: auto;
-      scrollbar-width: none;
-      flex: 1;
-    }
+    .info-bar-content { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 10px; gap: 5px; }
+    .info-main-scroll { display: flex; flex-wrap: nowrap; gap: 20px; overflow-x: auto; scrollbar-width: none; flex: 1; }
     .info-main-scroll::-webkit-scrollbar { display: none; }
-
-    .info-control-group {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex-shrink: 0;
-      border-left: 1px solid #f1f5f9;
-      padding-left: 10px;
-    }
-
-    .info-group {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      white-space: nowrap;
-    }
-
-    /* 🚩 글씨 크기는 형님이 원하셨던 아주 작은 사이즈 그대로 유지 */
-    .label-text {
-      color: #64748b;
-      font-weight: 800;
-      font-size: 7.5px; 
-      letter-spacing: -0.04em;
-    }
-
-    .value-text {
-      color: #334155;
-      font-weight: 700;
-      font-size: 7px; 
-      font-family: 'Inter', -apple-system, sans-serif;
-    }
-
+    .info-control-group { display: flex; align-items: center; gap: 5px; flex-shrink: 0; border-left: 1px solid #f1f5f9; padding-left: 10px; }
+    .info-group { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+    .label-text { color: #64748b; font-weight: 800; font-size: 7.5px; letter-spacing: -0.04em; }
+    .value-text { color: #334155; font-weight: 700; font-size: 7px; font-family: 'Inter', sans-serif; }
     .up-color { color: #ef4444; font-size: 5.5px; }
     .down-color { color: #3b82f6; font-size: 5.5px; }
-
-    .refresh-btn {
-      cursor: pointer;
-      color: #94a3b8;
-      font-size: 8px; 
-      display: flex;
-      align-items: center;
-      padding: 2px;
-    }
-    .refresh-btn:hover { color: #475569; }
+    .refresh-btn { cursor: pointer; color: #94a3b8; font-size: 8px; display: flex; align-items: center; padding: 2px; }
     .spinning { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    .footer-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 30px;
-      background: #f9fafb;
-      border-top: 1px solid #e5e7eb;
-      color: #9ca3af;
-      font-size: 8px; 
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2500;
-    }
-
-    /* 🌙 다크모드 대응 */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 8px; display: flex; align-items: center; justify-content: center; z-index: 2500; }
     body.dark-mode .bottom-info-bar { background: #1e293b; border-top-color: #334155; }
     body.dark-mode .footer-bar { background: #0f172a; border-top-color: #1e293b; color: #64748b; }
     body.dark-mode .label-text { color: #94a3b8; }
     body.dark-mode .value-text { color: #f1f5f9; }
-    body.dark-mode .info-control-group { border-left-color: #334155; }
   </style>
 
-  <script th:inline="javascript">
+<script th:inline="javascript">
     document.addEventListener("DOMContentLoaded", () => {
-      const yearEl = document.getElementById("currentYear");
-      if(yearEl) yearEl.textContent = new Date().getFullYear();
+        // 1. 하단 카피라이트 연도 세팅
+        const yearEl = document.getElementById("currentYear");
+        if(yearEl) yearEl.textContent = new Date().getFullYear();
+        
+        // 2. 페이지 열리자마자 첫 데이터 수집
+        handleExchangeRefresh();
+
+        // 3. 🚩 1분(60000ms)마다 자동으로 지수 갱신
+        setInterval(() => {
+            handleExchangeRefresh();
+        }, 60000); 
     });
 
     (function initStockBar() {
-      let __isExchangeFetching = false;
-      window.handleExchangeRefresh = async function(e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        if (__isExchangeFetching) return;
-        const icon = document.getElementById('refresh-icon');
-        const btn = document.getElementById('btn-refresh-info');
-        __isExchangeFetching = true;
-        if (icon) icon.classList.add('spinning');
-        if (btn) btn.style.opacity = '0.5';
-        try {
-          const response = await fetch('/api/exchange/latest?nocache=' + Date.now());
-          if (response.ok) {
-            const data = await response.json();
-            if (data.USD) document.getElementById('val-usd').innerText = data.USD;
-            const updateIndex = (id, value, type) => {
-              const el = document.getElementById(id);
-              if (!el || !value) return;
-              const colorClass = type === 'up' ? 'up-color' : 'down-color';
-              const iconMark = type === 'up' ? '▲' : '▼';
-              el.innerHTML = `${value} <span class="${colorClass}">${iconMark}</span>`;
-            };
-            if (data.NASDAQ) updateIndex('val-nasdaq', data.NASDAQ, data.NASDAQ_TYPE || 'up');
-            if (data.DOW) updateIndex('val-dow', data.DOW, data.DOW_TYPE || 'up');
-            if (data.KOSPI) updateIndex('val-kospi', data.KOSPI, data.KOSPI_TYPE || 'down');
-            if (data.KOSDAQ) updateIndex('val-kosdaq', data.KOSDAQ, data.KOSDAQ_TYPE || 'up');
-            if (data.updateTime) document.getElementById('val-time').innerText = data.updateTime;
-          }
-        } catch (err) {
-          console.error("Update Error:", err);
-        } finally {
-          setTimeout(() => {
-            if (icon) icon.classList.remove('spinning');
-            if (btn) btn.style.opacity = '1';
-            __isExchangeFetching = false;
-          }, 600);
-        }
-      };
+        let __isFetching = false; 
+
+        window.handleExchangeRefresh = async function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (__isFetching) return;
+
+            const icon = document.getElementById('refresh-icon');
+            const btn = document.getElementById('btn-refresh-info');
+            __isFetching = true;
+            
+            if (icon) icon.classList.add('spinning');
+            if (btn) btn.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('/api/exchange/latest?nocache=' + Date.now());
+                if (!response.ok) throw new Error('API 통신 실패');
+                
+                const data = await response.json();
+                
+                const updateIndex = (id, value, type) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (!value || value === "0" || value === "null") return;
+                    
+                    const isUp = (type === 'up' || type === '1' || type === '2');
+                    const colorClass = isUp ? 'up-color' : 'down-color';
+                    const iconMark = isUp ? '▲' : '▼';
+                    
+                    const formattedVal = String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                    el.innerHTML = `${formattedVal} <span class="${colorClass}">${iconMark}</span>`;
+                };
+
+                updateIndex('val-nasdaq', data.NASDAQ, data.NASDAQ_TYPE);
+                updateIndex('val-dow', data.DOW, data.DOW_TYPE);
+                updateIndex('val-kospi', data.KOSPI, data.KOSPI_TYPE);
+                updateIndex('val-kosdaq', data.KOSDAQ, data.KOSDAQ_TYPE);
+
+                if (data.updateTime) {
+                    document.getElementById('val-time').innerText = data.updateTime;
+                }
+
+            } catch (err) {
+                console.error("📊 [지수 업데이트 에러]:", err);
+                const timeEl = document.getElementById('val-time');
+                if (timeEl) timeEl.innerText = "연결지연";
+            } finally {
+                setTimeout(() => {
+                    if (icon) icon.classList.remove('spinning');
+                    if (btn) btn.style.opacity = '1';
+                    __isFetching = false;
+                }, 600);
+            }
+        };
     })();
-  </script>
+</script>
 </div>

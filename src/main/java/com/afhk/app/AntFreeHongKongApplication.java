@@ -6,13 +6,14 @@ import org.springframework.boot.builder.SpringApplicationBuilder; // WAR 배포 
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer; // WAR 배포 필수 import
 import org.springframework.cache.annotation.EnableCaching; // 캐싱 활성화
 // import org.springframework.scheduling.annotation.EnableScheduling; // 스케줄링 비활성화
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /*
 
 | 실행 환경                                | 동작 방식                                                         |
 | ------------------------------------ | ------------------------------------------------------------- |
-| `java -jar MyBaseLinkV2.jar` (로컬 실행) | `main()` 메서드가 실행 → 내장 톰캣 구동                                   |
-| `MyBaseLinkV2.war` (운영 톰캣 배포)        | `SpringBootServletInitializer`의 `configure()`가 호출됨 → 외부 톰캣 구동 |
+| `java -jar AntFreeHongKong.jar` (로컬 실행) | `main()` 메서드가 실행 → 내장 톰캣 구동                                   |
+| `AntFreeHongKong.war` (운영 톰캣 배포)        | `SpringBootServletInitializer`의 `configure()`가 호출됨 → 외부 톰캣 구동 |
 
 -------------------------------------------------------------------------------------------------------------
 
@@ -29,7 +30,7 @@ import org.springframework.cache.annotation.EnableCaching; // 캐싱 활성화
 
 @SpringBootApplication
 @EnableCaching // 캐싱 기능 활성화
-// @EnableScheduling // 스케줄링 기능 비활성화
+@EnableScheduling // 스케줄링 기능 비활성화
 // 💡 외부 Tomcat 배포를 위해 반드시 SpringBootServletInitializer를 상속해야 합니다.
 public class AntFreeHongKongApplication extends SpringBootServletInitializer {
 

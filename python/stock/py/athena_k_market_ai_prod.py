@@ -86,7 +86,7 @@ class CustomJsonEncoder(json.JSONEncoder):
 # ==============================
 # 2. 경로 및 상수 설정
 # ==============================
-# → 상위 2단계로 올라가면 /MyBaseLinkV2/python
+# → 상위 2단계로 올라가면 /AntFreeHongKong/python
 BASE_DIR = Path(__file__).resolve().parents[2]
 LOG_DIR = BASE_DIR / "log"
 DATA_DIR = BASE_DIR / "data" / "stock_data" 
